@@ -3,7 +3,7 @@
 <h3>NAME: R P Loshini</h3>
 <h3>REGISTER NO: 212225230155</h3>
 <h3>EX. NO: 2</h3>
-<h3>DATE: 02.11.2026</h3>
+<h3>DATE: 04.11.2026</h3>
 <h1> <align=center> MATRIX SUMMATION WITH A 2D GRID AND 2D BLOCKS </h3>
 i.  Use the file sumMatrixOnGPU-2D-grid-2D-block.cu
 ii. Matrix summation with a 2D grid and 2D blocks. Adapt it to integer matrix addition. Find the best execution configuration. </h3>
@@ -34,6 +34,10 @@ Google Colab with NVCC Compiler
 12.	Reset the device: Reset the device using cudaDeviceReset to ensure that all resources are cleaned up before the program exits.
 
 ## PROGRAM:
+```
+!pip install git+https://github.com/andreinechaev/nvcc4jupyter.git
+%load_ext nvcc4jupyter
+```
 ```
 %%cuda
 #include <cuda_runtime.h>
@@ -131,24 +135,24 @@ inline double seconds()
 }
 
 #endif // _COMMON_H
-void initialData(float *ip, const int size)
+void initialData(int *ip, const int size)
 {
     int i;
 
     for(i = 0; i < size; i++)
     {
-        ip[i] = (float)(rand() & 0xFF) / 10.0f;
+        ip[i] = rand() % 100;
     }
 
     return;
 }
 
-void sumMatrixOnHost(float *A, float *B, float *C, const int nx,
+void sumMatrixOnHost(int *A, int *B, int *C, const int nx,
                      const int ny)
 {
-    float *ia = A;
-    float *ib = B;
-    float *ic = C;
+    int *ia = A;
+    int *ib = B;
+    int *ic = C;
 
     for (int iy = 0; iy < ny; iy++)
     {
@@ -167,17 +171,16 @@ void sumMatrixOnHost(float *A, float *B, float *C, const int nx,
 }
 
 
-void checkResult(float *hostRef, float *gpuRef, const int N)
+void checkResult(int *hostRef, int *gpuRef, const int N)
 {
-    double epsilon = 1.0E-8;
     bool match = 1;
 
     for (int i = 0; i < N; i++)
     {
-        if (abs(hostRef[i] - gpuRef[i]) > epsilon)
+        if (hostRef[i] != gpuRef[i])
         {
             match = 0;
-            printf("host %f gpu %f\n", hostRef[i], gpuRef[i]);
+            printf("host %d gpu %d\n", hostRef[i], gpuRef[i]);
             break;
         }
     }
@@ -188,7 +191,7 @@ void checkResult(float *hostRef, float *gpuRef, const int N)
         printf("Arrays do not match.\n\n");
 }
 
-__global__ void sumMatrixOnGPU2D(float *A, float *B, float *C, int NX, int NY)
+__global__ void sumMatrixOnGPU2D(int *A, int *B, int *C, int NX, int NY)
 {
 
 unsigned int ix = blockIdx.x * blockDim.x + threadIdx.x;
@@ -219,15 +222,15 @@ int main(int argc, char **argv)
     int ny = 1 << 14;
 
     int nxy = nx * ny;
-    int nBytes = nxy * sizeof(float);
+    int nBytes = nxy * sizeof(int);
     printf("Matrix size: nx %d ny %d\n", nx, ny);
 
     // malloc host memory
-    float *h_A, *h_B, *hostRef, *gpuRef;
-    h_A = (float *)malloc(nBytes);
-    h_B = (float *)malloc(nBytes);
-    hostRef = (float *)malloc(nBytes);
-    gpuRef = (float *)malloc(nBytes);
+    int *h_A, *h_B, *hostRef, *gpuRef;
+    h_A = (int *)malloc(nBytes);
+    h_B = (int *)malloc(nBytes);
+    hostRef = (int *)malloc(nBytes);
+    gpuRef = (int *)malloc(nBytes);
 
     // initialize data at host side
     double iStart = seconds();
@@ -246,7 +249,7 @@ int main(int argc, char **argv)
     printf("sumMatrixOnHost elapsed %f sec\n", iElaps);
 
     // malloc device global memory
-    float *d_MatA, *d_MatB, *d_MatC;
+    int *d_MatA, *d_MatB, *d_MatC;
     CHECK(cudaMalloc((void **)&d_MatA, nBytes));
     CHECK(cudaMalloc((void **)&d_MatB, nBytes));
     CHECK(cudaMalloc((void **)&d_MatC, nBytes));
@@ -309,8 +312,8 @@ CHECK(cudaDeviceSynchronize());
 ```
 
 ## OUTPUT:
-<img width="766" height="149" alt="image" src="https://github.com/user-attachments/assets/9c21329d-9d02-4647-9596-5f788539ad60" />
+<img width="769" height="166" alt="Screenshot 2026-11-04 201920" src="https://github.com/user-attachments/assets/0b38e5a7-ada9-4766-b3ee-54c14f80b353" />
 
 
 ## RESULT:
-The host took 0.847952 seconds to complete it’s computation, while the GPU outperforms the host and completes the computation in 0.014760 seconds. Therefore, float variables in the GPU will result in the best possible result. Thus, matrix summation using 2D grids and 2D blocks has been performed successfully.
+The host (CPU) completed the integer matrix addition in 0.980359 seconds, while the GPU outperformed the host and completed the computation in 0.014657 seconds using a 2D grid of size (512, 512) and 2D block dimensions of (32, 32). The GPU results were verified against the CPU reference using exact integer matching ("Arrays match"). Thus, integer matrix summation using a 2D grid and 2D blocks has been successfully executed and verified.
